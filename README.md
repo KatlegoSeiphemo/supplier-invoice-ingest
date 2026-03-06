@@ -1,1 +1,1 @@
-# supplier-invoice-ingest
+# supplier-invoice-ingest<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_10_AM" src="https://github.com/user-attachments/assets/5722b8e0-ac81-4b21-a925-a1a28fd15c86" />
