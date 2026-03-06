@@ -229,22 +229,41 @@ Supplier Ingest: 3 ok, 1 dup, 0 failed
 
 ### Successful Insert Run
 
-![Success Email]<img width="1366" height="739" alt="Supplier-Ingest-3-ok-0-dup-0-failed-seiphemokatlego-gmail-com-Gmail-03-06-2026_01_41_AM" src="https://github.com/user-attachments/assets/13740c76-011e-49e5-b597-ad81783f7f8c" />
+<img width="1366" height="739" alt="Supplier-Ingest-3-ok-0-dup-0-failed-seiphemokatlego-gmail-com-Gmail-03-06-2026_01_41_AM" src="https://github.com/user-attachments/assets/13740c76-011e-49e5-b597-ad81783f7f8c" />
+
+**Subject format:**
+```
+Supplier Ingest: File already processed — skipped
+```
+
+### Successful Insert Run
+![Uploading Supplier-Ingest-File-already-processed-—-skipped-seiphemokatlego-gmail-com-Gmail-03-06-2026_09_23_AM.png…]()
 
 
+**Subject format:**
+```
+Supplier Ingest: 0 ok, 0 dup, 2 failed
+```
 ### Failed Rows Run
 
-![Failed Email] 
+<img width="1366" height="841" alt="Supplier-Ingest-0-ok-0-dup-2-failed-seiphemokatlego-gmail-com-Gmail-03-06-2026_01_40_AM" src="https://github.com/user-attachments/assets/cdb07df0-3ece-44b1-9dc8-2ea4e4e8cf72" /> 
 
-
+**Subject format:**
+```
+Supplier Ingest: 0 ok, 1 dup, 0 failed
+```
 ### Duplicate Detection
+<img width="1366" height="599" alt="Supplier-Ingest-0-ok-1-dup-0-failed-seiphemokatlego-gmail-com-Gmail-03-06-2026_09_13_AM" src="https://github.com/user-attachments/assets/30fdf324-93b0-4b77-836a-92fc8f003c78" />
 
-![Duplicate Email]<img width="1366" height="841" alt="Supplier-Ingest-0-ok-0-dup-2-failed-seiphemokatlego-gmail-com-Gmail-03-06-2026_01_40_AM" src="https://github.com/user-attachments/assets/cdb07df0-3ece-44b1-9dc8-2ea4e4e8cf72" />
 
+**Subject format:**
+```
+Supplier Ingest: 0 ok, 4 dup, 0 failed
+```
 
 ### Bulk Duplicate Detection
 
-![Bulk Duplicate Email] <img width="1366" height="739" alt="Supplier-Ingest-0-ok-4-dup-0-failed-seiphemokatlego-gmail-com-Gmail-03-06-2026_01_42_AM" src="https://github.com/user-attachments/assets/617ed05e-f486-4ffc-9be0-4720d0dc81e3" />
+<img width="1366" height="739" alt="Supplier-Ingest-0-ok-4-dup-0-failed-seiphemokatlego-gmail-com-Gmail-03-06-2026_01_42_AM" src="https://github.com/user-attachments/assets/617ed05e-f486-4ffc-9be0-4720d0dc81e3" />
 
 
 ---
