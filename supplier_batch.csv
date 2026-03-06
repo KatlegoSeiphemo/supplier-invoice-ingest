@@ -1,0 +1,5 @@
+supplier_number,supplier_name,invoice_number,department,invoice_date,amount_excl,vat_rate,status,validation_notes
+S009,OfficeCo,OC-22119,Ops,2025-10-28,2175.00,15,inserted,"VAT_DEFAULTED: applied 15% ZA default rate"
+S009,OfficeCo,OC-22120,Sales,2025-10-29,450.00,15,inserted,"VAT_DEFAULTED: applied 15% ZA default rate"
+S011,PaperMart,PM-77891,Ops,2025-11-01,1020.00,15,inserted,"VAT_DEFAULTED: applied 15% ZA default rate"
+S011,PaperMart,PM-77891,Ops,2025-11-01,1020.00,15,duplicate,"Duplicate: (supplier_number, invoice_number) already exists in supplier_invoices"

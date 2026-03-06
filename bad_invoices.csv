@@ -1,0 +1,3 @@
+supplier_number,supplier_name,invoice_number,department,invoice_date,amount_excl,vat_rate
+S999,,BAD-001,,2025-10-28,500.00,15
+S888,TestCo,BAD-002,Finance,2030-01-01,300.00,15
