@@ -77,7 +77,8 @@ Google Drive Trigger ──► Get/Download File
 *Gmail trigger active:*
  <img width="1366" height="768" alt="supplier-ingest-n8n-03-06-2026_01_17_AM" src="https://github.com/user-attachments/assets/13851f18-453c-4f1b-af89-eff94c16b947" />
 
- <img width="1366" height="768" alt="supplier-ingest-n8n-03-06-2026_01_17_AM (1)" src="https://github.com/user-attachments/assets/bf1a2736-f460-4bd9-99e3-3fb6b9697cde" />
+<img width="1365" height="767" alt="supplier-ingest-n8n-03-06-2026_01_18_AM (1)" src="https://github.com/user-attachments/assets/e38f9564-157c-4512-92dd-634c6dcbe02d" />
+
 
 
 
