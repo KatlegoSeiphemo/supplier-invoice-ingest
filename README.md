@@ -71,15 +71,15 @@ Google Drive Trigger ──► Get/Download File
 
 ### Workflow Canvas
 
-![Workflow Canvas]<img width="1366" height="599" alt="Workflow-Automation-n8n-03-06-2026_08_48_AM" src="https://github.com/user-attachments/assets/44ee339a-02df-40b5-a1f1-84f918b33e79" />
+<img width="1366" height="599" alt="Workflow-Automation-n8n-03-06-2026_08_48_AM" src="https://github.com/user-attachments/assets/44ee339a-02df-40b5-a1f1-84f918b33e79" />
 
 
 *Gmail trigger active:*
-![Workflow Canvas Gmail] <img width="1366" height="768" alt="supplier-ingest-n8n-03-06-2026_01_17_AM" src="https://github.com/user-attachments/assets/13851f18-453c-4f1b-af89-eff94c16b947" />
+ <img width="1366" height="768" alt="supplier-ingest-n8n-03-06-2026_01_17_AM" src="https://github.com/user-attachments/assets/13851f18-453c-4f1b-af89-eff94c16b947" />
 
 
 *Google Drive trigger active:*
-![Workflow Canvas Drive]<img width="1366" height="599" alt="supplier-ingest-n8n-03-06-2026_08_52_AM" src="https://github.com/user-attachments/assets/e8b36a84-47a2-4a87-a22a-10ca72b04fdf" />
+<img width="1366" height="599" alt="supplier-ingest-n8n-03-06-2026_08_52_AM" src="https://github.com/user-attachments/assets/e8b36a84-47a2-4a87-a22a-10ca72b04fdf" />
 
 
 ---
@@ -237,7 +237,8 @@ Supplier Ingest: File already processed — skipped
 ```
 
 ### Successful Insert Run
-![Uploading Supplier-Ingest-File-already-processed-—-skipped-seiphemokatlego-gmail-com-Gmail-03-06-2026_09_23_AM.png…]()
+
+<img width="1366" height="744" alt="Supplier-Ingest-File-already-processed-—-skipped-seiphemokatlego-gmail-com-Gmail-03-06-2026_09_23_AM" src="https://github.com/user-attachments/assets/4ba0ff06-23de-4d3b-9f27-cb3e5804b1cb" />
 
 
 **Subject format:**
@@ -272,14 +273,14 @@ Supplier Ingest: 0 ok, 4 dup, 0 failed
 
 ### supplier_invoices Table
 
-![Supabase Invoices]
+
 
 <img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_10_AM" src="https://github.com/user-attachments/assets/4e6a54bc-79d6-4d93-a2ac-60a1362afd12" />
 
 
 ### supplier_invoices_failures Table
 
-![Supabase Failures]<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_07_AM" src="https://github.com/user-attachments/assets/2a633697-d3ea-42ad-bd15-2040d2f538fc" />
+<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_07_AM" src="https://github.com/user-attachments/assets/2a633697-d3ea-42ad-bd15-2040d2f538fc" />
 <img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_08_AM" src="https://github.com/user-attachments/assets/9320bbbf-da2d-40b1-9bc6-38e6584e5948" />
 <img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_09_AM" src="https://github.com/user-attachments/assets/9ec9df36-9679-4b42-8901-1be7efc5bf24" />
 
