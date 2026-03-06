@@ -232,7 +232,7 @@ All inserts will go to `supplier_invoices_staging` instead of `supplier_invoices
 
 **Subject format:**
 ```
-Supplier Ingest: 3 ok, 1 dup, 0 failed
+Supplier Ingest: 3 ok, 0 dup, 0 failed
 ```
 
 ### Successful Insert Run
@@ -244,7 +244,7 @@ Supplier Ingest: 3 ok, 1 dup, 0 failed
 Supplier Ingest: File already processed — skipped
 ```
 
-### Successful Insert Run
+### File-already-processed-—-skipped Run
 
 <img width="1366" height="744" alt="Supplier-Ingest-File-already-processed-—-skipped-seiphemokatlego-gmail-com-Gmail-03-06-2026_09_23_AM" src="https://github.com/user-attachments/assets/4ba0ff06-23de-4d3b-9f27-cb3e5804b1cb" />
 
@@ -278,20 +278,24 @@ Supplier Ingest: 0 ok, 4 dup, 0 failed
 ---
 
 ## Database Evidence
+<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_47_AM" src="https://github.com/user-attachments/assets/e98716be-3c8b-448a-a9ef-fec9b853de64" />
 
 ### supplier_invoices Table
+<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_50_AM" src="https://github.com/user-attachments/assets/740b19fd-aaee-4e58-84cf-f489be6f6037" />
+
+
+<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_51_AM" src="https://github.com/user-attachments/assets/2a64a0d0-8483-41cb-a45a-ecfb543da003" />
+
+<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_51_AM (1)" src="https://github.com/user-attachments/assets/e2864c6e-728c-4827-88a6-97df45848c09" />
 
 
 
-<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_10_AM" src="https://github.com/user-attachments/assets/4e6a54bc-79d6-4d93-a2ac-60a1362afd12" />
 
 
 ### supplier_invoices_failures Table
+<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_53_AM" src="https://github.com/user-attachments/assets/2375b6db-4451-43c7-9003-dce0f6850343" />
 
-<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_07_AM" src="https://github.com/user-attachments/assets/2a633697-d3ea-42ad-bd15-2040d2f538fc" />
-<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_08_AM" src="https://github.com/user-attachments/assets/9320bbbf-da2d-40b1-9bc6-38e6584e5948" />
-<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_08_09_AM" src="https://github.com/user-attachments/assets/9ec9df36-9679-4b42-8901-1be7efc5bf24" />
-
+<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_53_AM (1)" src="https://github.com/user-attachments/assets/462ec4e3-41ed-4316-a546-1e9f6cc5b50d" />
 
 ---
 
@@ -331,9 +335,10 @@ ORDER BY MIN(ingest_timestamp) DESC;
 
 ```
 supplier-invoice-ingest/
-├── supplier-ingest-final.json   ← import into n8n
+├── supplier-ingest.json         ← import into n8n
 ├── schema-final.sql             ← run in Supabase SQL Editor
 ├── results.csv                  ← expected output for sample CSV
+├── bad_invoices.csv             ← expected output for sample CSV
 ├── README.md                    ← this file
 └── screenshots/
     ├── workflow_canvas.png
