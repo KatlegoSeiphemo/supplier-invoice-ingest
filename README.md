@@ -93,7 +93,7 @@ Google Drive Trigger ──► Get/Download File
 
 
 
-*Gmail trigger active:*
+*Gmail trigger active:*  These show the workflow running with Gmail as the input source. The Gmail Trigger node on the top left is enabled (shown in colour) while the Google Drive Trigger is greyed out/disabled. When an email arrives with a CSV attachment in the InvoiceIngest label, the Gmail node fires, fetches the full message including the attachment, and passes it into the rest of the pipeline. You can see the execution path highlighted — showing exactly which nodes ran and how many items passed through each one.
 <img width="1366" height="599" alt="▶️ supplier-ingest - n8n (4)" src="https://github.com/user-attachments/assets/9eeee929-b282-4d41-a08e-0090a88713a4" />
 
 <img width="1366" height="599" alt="▶️ supplier-ingest - n8n" src="https://github.com/user-attachments/assets/649d47c6-65ae-49eb-9035-64590e044b6e" />
@@ -102,7 +102,8 @@ Google Drive Trigger ──► Get/Download File
 
 
 
-*Google Drive trigger active:*
+*Google Drive trigger active:* 
+These show the same workflow but with Google Drive as the input source instead. The Google Drive Trigger node is now the active one, watching a specific folder for new CSV uploads. When a file is dropped into that folder, it triggers the Download node which pulls the file binary and feeds it into the same extraction and hashing steps as the Gmail path. Both triggers converge at the Extract CSV Attachment node, so everything downstream is identical regardless of which source fired.
 
 <img width="1366" height="599" alt="▶️ supplier-ingest - n8n (2)" src="https://github.com/user-attachments/assets/8ea24093-f4af-4329-904e-12b6b7c1960f" />
 
