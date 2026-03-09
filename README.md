@@ -7,15 +7,15 @@ An automated end-to-end supplier invoice ingestion pipeline built with n8n. Inge
 
 ## Features
 
-- **Dual trigger sources** — Gmail (email attachments) and Google Drive (folder watch)
-- **File-level idempotency** — SHA-256 hash computed on every file; duplicate files are skipped before any processing
-- **Row-wise validation** — 4 business rules enforced on every row
-- **Automatic VAT calculation** — defaults to 15% (South Africa) if no rate provided
-- **Deduplication** — unique key `(supplier_number, invoice_number)` enforced at DB level
-- **Dry-run mode** — single flag to route inserts to a staging table instead of production
-- **Execution traceability** — every row tagged with `execution_id` and `row_number`
-- **HTML email alerts** — summary after every run with metrics and error table
-- **Failures table** — invalid rows persisted with `retry_count` for retry workflows
+Dual trigger sources — Instead of only one way to send invoices in, the pipeline accepts files from two places: Gmail (someone emails a CSV attachment) and Google Drive (someone drops a file into a watched folder). This means different team members can use whichever method suits them without any manual intervention.
+File-level idempotency — Before doing anything with a file, the pipeline computes a SHA-256 fingerprint of its contents and checks it against the processed_files table. If the exact same file has been sent before, it gets skipped entirely and a notification email is sent. This prevents double-processing if someone accidentally sends the same CSV twice.
+Row-wise validation — Every individual row in the CSV is checked against business rules before anything is written to the database. Required fields must be present, the VAT math must add up, and the invoice date cannot be in the future. Rows that fail are flagged with a specific reason rather than silently dropped.
+Automatic VAT calculation — If a row doesn't include a VAT amount or rate, the pipeline automatically applies South Africa's standard 15% VAT rate and computes the missing values. This reduces the burden on whoever is generating the CSV.
+Deduplication — Even if a file passes the file-level check, individual rows are checked against the database using the unique combination of supplier_number and invoice_number. If that invoice already exists, the row is marked as a duplicate and skipped rather than inserted twice.
+Dry-run mode — A single DRY_RUN = true flag in the validation node redirects all inserts to a staging table instead of production. This lets you test with real data without affecting live records.
+Execution traceability — Every row that gets inserted is tagged with the n8n execution_id and its row number within the CSV. This means you can query the database later and see exactly which run inserted which rows, making debugging and auditing straightforward.
+HTML email alerts — After every run, a formatted email is sent showing how many rows were inserted, duplicated, and failed. If there were failures, the email includes a table with the row number, invoice number, supplier, and the specific reason each row failed — so whoever receives it knows exactly what to fix.
+Failures table — Rows that fail validation aren't just discarded. They're written to a separate supplier_invoices_failures table with the full row data, the failure reason, and a retry_count starting at zero. A separate retry workflow can query this table and re-attempt rows after they've been manually corrected.
 
 ---
 
@@ -33,7 +33,13 @@ Google Drive Trigger ──► Get/Download File
                          Compute SHA-256 Hash
                                     │
                                     ▼
-                         Check File Hash (Code)
+                         Check File Hash in DB
+                         (queries processed_files)
+                                    │
+                                    ▼
+                         Code in JavaScript
+                         (merge hash + DB result,
+                          forward binary)
                                     │
                          File Already Processed?
                          ┌──────────┴──────────┐
@@ -58,10 +64,14 @@ Google Drive Trigger ──► Get/Download File
                                 │  ┌──┴──┐               │
                                 │ YES   NO                │
                                 │  │    │                 │
-                                │ Mark  Insert            │
-                                │ Dup   to DB             │
-                                │  │    │                 │
-                                └──┴────┴─────────────────┘
+                                │ Mark  Insert to DB      │
+                                │ Dup        │            │
+                                │  │    Write to          │
+                                │  │  processed_files     │
+                                │  │         │            │
+                                └──┴─────────┴────────────┘
+                                              │
+                                           Merge
                                               │
                                      Aggregate Metrics
                                      & Build Email
@@ -71,21 +81,19 @@ Google Drive Trigger ──► Get/Download File
 
 ### Workflow Canvas
 
-<img width="1366" height="599" alt="Workflow-Automation-n8n-03-06-2026_08_48_AM" src="https://github.com/user-attachments/assets/44ee339a-02df-40b5-a1f1-84f918b33e79" />
+<img width="1366" height="599" alt="Workflow Automation - n8n (1)" src="https://github.com/user-attachments/assets/e2eed040-7fdc-4bfb-a28c-bdd5ffe268a5" />
+
 
 
 *Gmail trigger active:*
- <img width="1366" height="768" alt="supplier-ingest-n8n-03-06-2026_01_17_AM" src="https://github.com/user-attachments/assets/13851f18-453c-4f1b-af89-eff94c16b947" />
-
-<img width="1365" height="767" alt="supplier-ingest-n8n-03-06-2026_01_18_AM (1)" src="https://github.com/user-attachments/assets/e38f9564-157c-4512-92dd-634c6dcbe02d" />
-
+<img width="1366" height="599" alt="Workflow Automation - n8n" src="https://github.com/user-attachments/assets/2dbb3080-42cb-4e58-a698-e87095b15476" />
+<img width="1366" height="599" alt="▶️ supplier-ingest - n8n" src="https://github.com/user-attachments/assets/649d47c6-65ae-49eb-9035-64590e044b6e" />
 
 
 
 *Google Drive trigger active:*
-<img width="1366" height="599" alt="supplier-ingest-n8n-03-06-2026_08_52_AM" src="https://github.com/user-attachments/assets/e8b36a84-47a2-4a87-a22a-10ca72b04fdf" />
-
-<img width="1366" height="599" alt="supplier-ingest-n8n-03-06-2026_02_09_AM (1)" src="https://github.com/user-attachments/assets/b25c5d9d-e911-414f-bad3-c490c1e1473c" />
+<img width="1366" height="599" alt="▶️ supplier-ingest - n8n (1)" src="https://github.com/user-attachments/assets/fa97bfb6-e155-4e13-a0bc-05ef9972ba81" />
+<img width="1366" height="599" alt="▶️ supplier-ingest - n8n (2)" src="https://github.com/user-attachments/assets/8ea24093-f4af-4329-904e-12b6b7c1960f" />
 
 
 
@@ -278,10 +286,14 @@ Supplier Ingest: 0 ok, 4 dup, 0 failed
 ---
 
 ## Database Evidence
-<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_47_AM" src="https://github.com/user-attachments/assets/e98716be-3c8b-448a-a9ef-fec9b853de64" />
+<img width="1366" height="599" alt="Database _ supplier-invoices _ KatlegoSeiphemo&#39;s Org _ Supabase" src="https://github.com/user-attachments/assets/0c2bf38b-9a57-4d28-ad4f-fe5b3317bc44" />
+
+### processed_files
+<img width="1366" height="599" alt="Table Editor _ supplier-invoices _ KatlegoSeiphemo&#39;s Org _ Supabase (1)" src="https://github.com/user-attachments/assets/8674391e-ced5-449f-809f-d59baf79e641" />
+
 
 ### supplier_invoices Table
-<img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_50_AM" src="https://github.com/user-attachments/assets/740b19fd-aaee-4e58-84cf-f489be6f6037" />
+
 
 
 <img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_51_AM" src="https://github.com/user-attachments/assets/2a64a0d0-8483-41cb-a45a-ecfb543da003" />
