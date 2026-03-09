@@ -7,15 +7,23 @@ An automated end-to-end supplier invoice ingestion pipeline built with n8n. Inge
 
 ## Features
 
-Dual trigger sources — Instead of only one way to send invoices in, the pipeline accepts files from two places: Gmail (someone emails a CSV attachment) and Google Drive (someone drops a file into a watched folder). This means different team members can use whichever method suits them without any manual intervention.
-File-level idempotency — Before doing anything with a file, the pipeline computes a SHA-256 fingerprint of its contents and checks it against the processed_files table. If the exact same file has been sent before, it gets skipped entirely and a notification email is sent. This prevents double-processing if someone accidentally sends the same CSV twice.
-Row-wise validation — Every individual row in the CSV is checked against business rules before anything is written to the database. Required fields must be present, the VAT math must add up, and the invoice date cannot be in the future. Rows that fail are flagged with a specific reason rather than silently dropped.
-Automatic VAT calculation — If a row doesn't include a VAT amount or rate, the pipeline automatically applies South Africa's standard 15% VAT rate and computes the missing values. This reduces the burden on whoever is generating the CSV.
-Deduplication — Even if a file passes the file-level check, individual rows are checked against the database using the unique combination of supplier_number and invoice_number. If that invoice already exists, the row is marked as a duplicate and skipped rather than inserted twice.
-Dry-run mode — A single DRY_RUN = true flag in the validation node redirects all inserts to a staging table instead of production. This lets you test with real data without affecting live records.
-Execution traceability — Every row that gets inserted is tagged with the n8n execution_id and its row number within the CSV. This means you can query the database later and see exactly which run inserted which rows, making debugging and auditing straightforward.
-HTML email alerts — After every run, a formatted email is sent showing how many rows were inserted, duplicated, and failed. If there were failures, the email includes a table with the row number, invoice number, supplier, and the specific reason each row failed — so whoever receives it knows exactly what to fix.
-Failures table — Rows that fail validation aren't just discarded. They're written to a separate supplier_invoices_failures table with the full row data, the failure reason, and a retry_count starting at zero. A separate retry workflow can query this table and re-attempt rows after they've been manually corrected.
+**Dual trigger sources** — Instead of only one way to send invoices in, the pipeline accepts files from two places: Gmail (someone emails a CSV attachment) and Google Drive (someone drops a file into a watched folder). This means different team members can use whichever method suits them without any manual intervention.
+
+**File-level idempotency** — Before doing anything with a file, the pipeline computes a SHA-256 fingerprint of its contents and checks it against the `processed_files` table. If the exact same file has been sent before, it gets skipped entirely and a notification email is sent. This prevents double-processing if someone accidentally sends the same CSV twice.
+
+**Row-wise validation** — Every individual row in the CSV is checked against business rules before anything is written to the database. Required fields must be present, the VAT math must add up, and the invoice date cannot be in the future. Rows that fail are flagged with a specific reason rather than silently dropped.
+
+**Automatic VAT calculation** — If a row doesn't include a VAT amount or rate, the pipeline automatically applies South Africa's standard 15% VAT rate and computes the missing values. This reduces the burden on whoever is generating the CSV.
+
+**Deduplication** — Even if a file passes the file-level check, individual rows are checked against the database using the unique combination of `supplier_number` and `invoice_number`. If that invoice already exists, the row is marked as a duplicate and skipped rather than inserted twice.
+
+**Dry-run mode** — A single `DRY_RUN = true` flag in the validation node redirects all inserts to a staging table instead of production. This lets you test with real data without affecting live records.
+
+**Execution traceability** — Every row that gets inserted is tagged with the n8n `execution_id` and its row number within the CSV. This means you can query the database later and see exactly which run inserted which rows, making debugging and auditing straightforward.
+
+**HTML email alerts** — After every run, a formatted email is sent showing how many rows were inserted, duplicated, and failed. If there were failures, the email includes a table with the row number, invoice number, supplier, and the specific reason each row failed — so whoever receives it knows exactly what to fix.
+
+**Failures table** — Rows that fail validation aren't just discarded. They're written to a separate `supplier_invoices_failures` table with the full row data, the failure reason, and a `retry_count` starting at zero. A separate retry workflow can query this table and re-attempt rows after they've been manually corrected.
 
 ---
 
@@ -86,15 +94,19 @@ Google Drive Trigger ──► Get/Download File
 
 
 *Gmail trigger active:*
-<img width="1366" height="599" alt="Workflow Automation - n8n" src="https://github.com/user-attachments/assets/2dbb3080-42cb-4e58-a698-e87095b15476" />
+<img width="1366" height="599" alt="▶️ supplier-ingest - n8n (4)" src="https://github.com/user-attachments/assets/9eeee929-b282-4d41-a08e-0090a88713a4" />
+
 <img width="1366" height="599" alt="▶️ supplier-ingest - n8n" src="https://github.com/user-attachments/assets/649d47c6-65ae-49eb-9035-64590e044b6e" />
+
+<img width="1366" height="599" alt="▶️ supplier-ingest - n8n (5)" src="https://github.com/user-attachments/assets/b62b38d4-61b3-4609-bf8d-0229bbe12c0e" />
 
 
 
 *Google Drive trigger active:*
-<img width="1366" height="599" alt="▶️ supplier-ingest - n8n (1)" src="https://github.com/user-attachments/assets/fa97bfb6-e155-4e13-a0bc-05ef9972ba81" />
+
 <img width="1366" height="599" alt="▶️ supplier-ingest - n8n (2)" src="https://github.com/user-attachments/assets/8ea24093-f4af-4329-904e-12b6b7c1960f" />
 
+<img width="1366" height="599" alt="supplier-ingest-n8n-03-09-2026_02_15_PM" src="https://github.com/user-attachments/assets/77c912ac-5a55-4ae3-b2ac-2b341c7ae2ff" />
 
 
 
@@ -102,7 +114,7 @@ Google Drive Trigger ──► Get/Download File
 
 ## Database Schema
 
-Three tables are created:
+Four tables are used:
 
 **`supplier_invoices`** — main production table
 
@@ -130,6 +142,17 @@ Three tables are created:
 **`supplier_invoices_failures`** — failed rows with retry support
 
 **`supplier_invoices_staging`** — dry-run table (identical structure)
+
+**`processed_files`** — file-level deduplication log
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | SERIAL | Auto-generated primary key |
+| source_hash | TEXT | SHA-256 of file contents, unique |
+| source_file_name | TEXT | Original CSV filename |
+| processed_at | TIMESTAMPTZ | Auto, default now() |
+
+One row is written here per successfully processed file. At the start of every run, the pipeline checks this table first — if the hash already exists, the entire file is skipped without touching `supplier_invoices`.
 
 ### Setup
 
@@ -224,6 +247,16 @@ All inserts will go to `supplier_invoices_staging` instead of `supplier_invoices
 2. In the Google Drive Trigger node, set the folder ID from the URL
 3. Drop CSV files into the folder to trigger the workflow
 
+### Switching Sources
+
+Only one trigger should be active at a time:
+
+| To use | Enable | Disable |
+|--------|--------|---------|
+| Gmail | Gmail Trigger | Google Drive Trigger (Bonus) |
+| Google Drive | Google Drive Trigger (Bonus) | Gmail Trigger |
+| Webhook | Webhook Upload (Bonus) | Either or both above |
+
 ---
 
 ## n8n Credential Setup
@@ -232,7 +265,7 @@ All inserts will go to `supplier_invoices_staging` instead of `supplier_invoices
 |-----------|------|---------|
 | Gmail account | Gmail OAuth2 | Gmail Trigger, Get a message, Send Email Alert |
 | Google Drive account | Google Drive OAuth2 | Google Drive Trigger, Download file |
-| Postgres account | PostgreSQL | Dedup Check, Insert to DB, Write to Failures |
+| Postgres account | PostgreSQL | Check File Hash in DB, Dedup Check, Insert to DB, Write to processed_files, Write to Failures Table |
 
 ---
 
@@ -291,18 +324,11 @@ Supplier Ingest: 0 ok, 4 dup, 0 failed
 ### processed_files
 <img width="1366" height="599" alt="Table Editor _ supplier-invoices _ KatlegoSeiphemo&#39;s Org _ Supabase (1)" src="https://github.com/user-attachments/assets/8674391e-ced5-449f-809f-d59baf79e641" />
 
-
 ### supplier_invoices Table
-
-
 
 <img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_51_AM" src="https://github.com/user-attachments/assets/2a64a0d0-8483-41cb-a45a-ecfb543da003" />
 
 <img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_51_AM (1)" src="https://github.com/user-attachments/assets/e2864c6e-728c-4827-88a6-97df45848c09" />
-
-
-
-
 
 ### supplier_invoices_failures Table
 <img width="1366" height="599" alt="supplier-invoices-KatlegoSeiphemo-s-Org-Supabase-03-06-2026_09_53_AM" src="https://github.com/user-attachments/assets/2375b6db-4451-43c7-9003-dce0f6850343" />
@@ -371,7 +397,7 @@ supplier-invoice-ingest/
 - ✅ Second trigger source (Google Drive)
 - ✅ `supplier_invoices_failures` table with `retry_count`
 - ✅ Dry-run mode (`DRY_RUN` flag → staging table)
-- ✅ File-level idempotency (SHA-256 hash check)
+- ✅ File-level idempotency (SHA-256 hash → `processed_files` table)
 - ✅ Execution ID traceability
 - ✅ Row numbers in validation errors
 
