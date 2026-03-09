@@ -74,6 +74,19 @@ CREATE TABLE IF NOT EXISTS supplier_invoices_staging (
 );
 
 -- ============================================================
+-- Processed files table (file-level idempotency)
+-- One row per successfully processed file.
+-- Checked at the start of every run — if the hash exists,
+-- the entire file is skipped without touching supplier_invoices.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS processed_files (
+    id               SERIAL       PRIMARY KEY,
+    source_hash      TEXT         NOT NULL UNIQUE,
+    source_file_name TEXT,
+    processed_at     TIMESTAMPTZ  DEFAULT now()
+);
+
+-- ============================================================
 -- Add new columns to existing table (if upgrading from v1)
 -- Safe to run even if columns already exist
 -- ============================================================
@@ -97,3 +110,6 @@ ALTER TABLE supplier_invoices ADD COLUMN IF NOT EXISTS row_number   INTEGER;
 
 -- Pending retries:
 --   SELECT * FROM supplier_invoices_failures WHERE retry_count < 3;
+
+-- Check processed files:
+--   SELECT * FROM processed_files ORDER BY processed_at DESC;
