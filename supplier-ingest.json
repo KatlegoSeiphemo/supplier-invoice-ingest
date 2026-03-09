@@ -16,13 +16,13 @@
           ]
         }
       },
-      "id": "7f9df4ea-d8c2-446f-b21d-2e9dfd944683",
+      "id": "b6d349ab-5d96-4b60-baf1-75192a9206b9",
       "name": "Gmail Trigger",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1,
       "position": [
-        -2144,
-        16
+        -1616,
+        176
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -30,7 +30,6 @@
           "name": "Gmail account"
         }
       },
-      "disabled": true,
       "notes": "Trigger: watches Gmail label 'InvoiceIngest' for emails with CSV attachments. Configure label in Gmail and point OAuth2 credentials here."
     },
     {
@@ -51,13 +50,13 @@
         "event": "fileCreated",
         "options": {}
       },
-      "id": "b3004881-102d-4c27-9c0f-927f2144fb8a",
+      "id": "1bbe4ba2-281d-480b-aa00-866a006a3d04",
       "name": "Google Drive Trigger (Bonus)",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
       "position": [
-        -2144,
-        208
+        -1616,
+        368
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -65,6 +64,7 @@
           "name": "Google Drive account"
         }
       },
+      "disabled": true,
       "notes": "BONUS: Second source — watches a Google Drive folder for new CSV uploads. Enable by un-disabling this node and disabling the Gmail Trigger."
     },
     {
@@ -74,13 +74,13 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "2f385d82-6ce3-487d-adaa-2275fa371eca",
+      "id": "f39aee11-cf21-4de2-8143-437fc8acc87e",
       "name": "Webhook Upload (Bonus)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        -1920,
-        400
+        -1392,
+        560
       ],
       "webhookId": "4b7d3b03-fca4-4238-a15a-baeaee7115c0",
       "disabled": true,
@@ -90,27 +90,27 @@
       "parameters": {
         "jsCode": "// ─── STEP 1: Extract attachment binary from Gmail ───────────────────────────\n// Handles both Gmail trigger (attachment binary on item) and Drive/Webhook.\n// Normalises to: { binary: { data: <base64>, fileName: <string> } }\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  // Gmail sends attachments as binary properties named attachment_0, attachment_1 …\n  // Drive sends a single binary. Webhook sends multipart.\n  \n  const binaryKeys = Object.keys(item.binary || {});\n  \n  if (binaryKeys.length === 0) {\n    // Drive trigger: file content may be in item.json.binaryData or needs a separate download\n    // For Drive, n8n Download node is used upstream — skip if no binary\n    continue;\n  }\n  \n  for (const key of binaryKeys) {\n    const bin = item.binary[key];\n    if (!bin.fileName?.endsWith('.csv') && !bin.mimeType?.includes('csv')) continue;\n    \n    results.push({\n      json: {\n        source_file_name: bin.fileName || 'unknown.csv',\n        trigger_source: 'gmail'\n      },\n      binary: {\n        data: bin\n      }\n    });\n  }\n}\n\nreturn results;"
       },
-      "id": "a531f4e3-da3d-4d32-9dab-acb6c9554fe0",
+      "id": "05db9a13-8fa0-43b6-a609-88138fe4b909",
       "name": "Extract CSV Attachment",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1696,
-        208
+        -1168,
+        368
       ],
       "notes": "Normalises the binary payload from any trigger source into a single { binary.data, json.source_file_name } shape. Filters to .csv files only."
     },
     {
       "parameters": {
-        "jsCode": "// ─── STEP 2: Compute SHA-256 hash of file contents ──────────────────────────\n// Used for idempotency: same file re-sent = same hash = skipped.\n\nconst crypto = require('crypto');\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const binData = item.binary?.data;\n  if (!binData) {\n    results.push({ json: { ...item.json, _error: 'No binary data found' } });\n    continue;\n  }\n  \n  // n8n stores binary as base64 string\n  const buffer = Buffer.from(binData.data, 'base64');\n  const hash = crypto.createHash('sha256').update(buffer).digest('hex');\n  \n  results.push({\n    json: {\n      ...item.json,\n      source_hash: hash,\n      raw_csv_base64: binData.data\n    },\n    binary: item.binary\n  });\n}\n\nreturn results;"
+        "jsCode": "// STEP 2: Compute SHA-256 hash of file contents\n// Preserve binary so downstream nodes (CSV parser) can still read the file\n\nconst crypto = require('crypto');\nconst items = $input.all();\n\nconst results = [];\n\nfor (const item of items) {\n  const binData = item.binary?.data;\n\n  if (!binData) {\n    results.push({\n      json: { ...item.json, _error: 'No binary data found' }\n    });\n    continue;\n  }\n\n  const buffer = Buffer.from(binData.data, 'base64');\n  const hash = crypto.createHash('sha256').update(buffer).digest('hex');\n\n  results.push({\n    json: {\n      ...item.json,\n      source_hash: hash\n    },\n    binary: item.binary // ✅ CRITICAL: preserve the file\n  });\n}\n\nreturn results;"
       },
-      "id": "727aa852-7b2b-49fe-a62d-c922d06e198d",
+      "id": "f4bfbca4-3826-4bef-9479-342d712e6824",
       "name": "Compute SHA-256 Hash",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1472,
-        208
+        -944,
+        368
       ],
       "notes": "Computes SHA-256 of the raw CSV bytes. Stored as source_hash. Can be used to guard against reprocessing identical files."
     },
@@ -123,13 +123,13 @@
           "includeEmptyCells": true
         }
       },
-      "id": "68e4e633-ebae-4196-8dfe-1ba7859c33f8",
+      "id": "42c27642-464f-4280-93d7-788913d0447c",
       "name": "Parse CSV → JSON Rows",
       "type": "n8n-nodes-base.spreadsheetFile",
       "typeVersion": 2,
       "position": [
-        -592,
-        288
+        -48,
+        448
       ],
       "notes": "Converts the CSV binary into individual JSON items — one per row. Headers auto-detected. Each output item = one invoice row."
     },
@@ -137,13 +137,13 @@
       "parameters": {
         "jsCode": "// ─── STEP 3: Enrich rows with file metadata ─────────────────────────────────\n// Spreadsheet node loses the parent item context; re-attach source metadata.\n// This node uses $('Compute SHA-256 Hash').first() to grab the hash + filename.\n\nconst meta = $('Compute SHA-256 Hash').first().json;\nconst rows = $input.all();\n\nreturn rows.map(row => ({\n  json: {\n    ...row.json,\n    source_file_name: meta.source_file_name,\n    source_hash: meta.source_hash\n  }\n}));"
       },
-      "id": "2446d30f-fcd2-4b36-8b5f-325a52de7650",
+      "id": "3ea7090c-038c-4cb2-a78c-7da29c5210d4",
       "name": "Attach File Metadata to Rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -368,
-        288
+        176,
+        448
       ],
       "notes": "Re-attaches source_file_name and source_hash to every parsed row (the CSV parser outputs clean rows without the binary context)."
     },
@@ -151,13 +151,13 @@
       "parameters": {
         "jsCode": "// ─── CONFIGURATION ───────────────────────────────────────────────────────────\n// DRY_RUN: set to true to write to supplier_invoices_staging instead of\n// supplier_invoices. No production data is touched in dry-run mode.\nconst DRY_RUN = false;\n\n// ─── STEP 4: Row-wise Validation & Normalisation ─────────────────────────────\n// Business rules:\n//   R1. Required fields present.\n//   R2. Math: amount_incl_vat = amount_excl_vat + vat  (±0.01 tolerance).\n//   R3. VAT default 15% (South Africa) if no explicit rate; flag mismatch.\n//   R4. invoice_date not in the future (Africa/Johannesburg, UTC+2).\n// Rounding: Math.round(x * 100) / 100  — 2 decimal places.\n\nconst executionId = $execution.id || 'unknown';\nconst items = $input.all();\nconst results = [];\n\nfunction nowJHB() {\n  return new Date(Date.now() + 2 * 3600 * 1000);\n}\n\nfunction round2(n) {\n  return Math.round(n * 100) / 100;\n}\n\nfunction parseDate(str) {\n  if (!str) return null;\n  const d = new Date(str + 'T00:00:00+02:00');\n  return isNaN(d.getTime()) ? null : d;\n}\n\nfor (let idx = 0; idx < items.length; idx++) {\n  const item = items[idx];\n  const r = item.json;\n  const notes = [];\n  let valid = true;\n\n  // ── Map CSV columns → unified schema ──────────────────────────────────────\n  const invoice_number   = (r.invoice_number  || '').toString().trim();\n  const supplier_number  = (r.supplier_number || '').toString().trim();\n  const supplier_name    = (r.supplier_name   || '').toString().trim();\n  const department       = (r.department      || '').toString().trim();\n  const invoice_date_raw = (r.invoice_date    || '').toString().trim();\n\n  const amount_excl_raw  = (r.amount_excl || '').toString().replace(/[^\\d.]/g, '');\n  const vat_raw          = (r.vat         || '').toString().replace(/[^\\d.]/g, '');\n  const vat_rate_raw     = (r.vat_rate    || '').toString().replace(/[^\\d.]/g, '');\n  const amount_incl_raw  = (r.amount_incl || '').toString().replace(/[^\\d.]/g, '');\n\n  // ── R1: Required fields ────────────────────────────────────────────────────\n  if (!invoice_number)   { notes.push('MISSING: invoice_number');  valid = false; }\n  if (!supplier_number)  { notes.push('MISSING: supplier_number'); valid = false; }\n  if (!supplier_name)    { notes.push('MISSING: supplier_name');   valid = false; }\n  if (!department)       { notes.push('MISSING: department');      valid = false; }\n  if (!invoice_date_raw) { notes.push('MISSING: invoice_date');    valid = false; }\n  if (!amount_excl_raw)  { notes.push('MISSING: amount_excl');     valid = false; }\n\n  // ── Parse numerics ─────────────────────────────────────────────────────────\n  const amount_excl_vat = amount_excl_raw ? round2(parseFloat(amount_excl_raw)) : null;\n\n  let vat = null;\n  let vat_rate = vat_rate_raw ? parseFloat(vat_rate_raw) : null;\n\n  if (vat_raw) {\n    vat = round2(parseFloat(vat_raw));\n    if (vat_rate !== null && amount_excl_vat !== null) {\n      const derived_vat = round2(amount_excl_vat * vat_rate / 100);\n      if (Math.abs(derived_vat - vat) > 0.01) {\n        notes.push('VAT_MISMATCH: given vat=' + vat + ' but derived from rate ' + vat_rate + '% = ' + derived_vat);\n        valid = false;\n      }\n    }\n  } else if (vat_rate !== null && amount_excl_vat !== null) {\n    vat = round2(amount_excl_vat * vat_rate / 100);\n  } else if (amount_excl_vat !== null) {\n    vat_rate = 15;\n    vat = round2(amount_excl_vat * 0.15);\n    notes.push('VAT_DEFAULTED: applied 15% ZA default rate');\n  }\n\n  if (vat === null) { notes.push('MISSING: vat (cannot compute)'); valid = false; }\n\n  let amount_incl_vat = null;\n  if (amount_incl_raw) {\n    amount_incl_vat = round2(parseFloat(amount_incl_raw));\n  } else if (amount_excl_vat !== null && vat !== null) {\n    amount_incl_vat = round2(amount_excl_vat + vat);\n  }\n\n  if (amount_incl_vat === null) { notes.push('MISSING: amount_incl_vat (cannot compute)'); valid = false; }\n\n  // ── R2: Math check ─────────────────────────────────────────────────────────\n  if (amount_excl_vat !== null && vat !== null && amount_incl_vat !== null) {\n    const expected = round2(amount_excl_vat + vat);\n    if (Math.abs(expected - amount_incl_vat) > 0.01) {\n      notes.push('MATH_ERROR: amount_excl_vat(' + amount_excl_vat + ') + vat(' + vat + ') = ' + expected + ', but amount_incl_vat = ' + amount_incl_vat);\n      valid = false;\n    }\n  }\n\n  // ── R4: Invoice date not in the future ─────────────────────────────────────\n  const invoice_date = parseDate(invoice_date_raw);\n  if (!invoice_date) {\n    notes.push('INVALID_DATE: ' + invoice_date_raw + ' is not a valid date (expected YYYY-MM-DD)');\n    valid = false;\n  } else {\n    const today = nowJHB();\n    today.setHours(0, 0, 0, 0);\n    if (invoice_date > today) {\n      notes.push('FUTURE_DATE: invoice_date ' + invoice_date_raw + ' is in the future (JHB timezone)');\n      valid = false;\n    }\n  }\n\n  results.push({\n    json: {\n      invoice_number,\n      supplier_number,\n      supplier_name,\n      department,\n      amount_excl_vat,\n      vat,\n      amount_incl_vat,\n      invoice_date: invoice_date ? invoice_date_raw : null,\n      source_file_name: r.source_file_name || null,\n      source_hash:      r.source_hash      || null,\n      status: valid ? 'pending_insert' : 'failed',\n      validation_notes: notes.length > 0 ? notes.join(' | ') : null,\n      row_number: idx + 1,\n      execution_id: executionId,\n      _valid: valid,\n      _dry_run: DRY_RUN\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "1b506217-a8ae-4253-88bd-c6b2cd9f629b",
+      "id": "67e838eb-c696-4411-bad0-93128bed5bd4",
       "name": "Validate & Normalise Rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -144,
-        288
+        400,
+        448
       ],
       "notes": "Core validation engine. R1=required fields, R2=math check, R3=VAT 15% default, R4=future date. Set DRY_RUN=true at top to use staging table. Attaches execution_id and row_number for traceability."
     },
@@ -197,13 +197,13 @@
           "looseTypeValidation": true
         }
       },
-      "id": "95edd623-80a9-4629-ab51-31882bb6d458",
+      "id": "b4f8d7d6-63a3-4836-94fb-4f25aa2cccc9",
       "name": "Split Valid / Invalid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        80,
-        288
+        624,
+        448
       ],
       "notes": "Routes: TRUE branch → dedup check → insert. FALSE branch → mark failed, collect for email summary."
     },
@@ -213,13 +213,13 @@
         "query": "SELECT EXISTS(\n  SELECT 1 FROM supplier_invoices \n  WHERE supplier_number = '{{ $json.supplier_number }}' \n  AND invoice_number = '{{ $json.invoice_number }}'\n) AS is_duplicate;",
         "options": {}
       },
-      "id": "4c99fd95-1177-4ce7-9fbf-6f4a8c5c005c",
+      "id": "d46a12f8-5632-4ca3-8ea9-65526dee957d",
       "name": "Dedup Check (DB Query)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        304,
-        176
+        848,
+        336
       ],
       "credentials": {
         "postgres": {
@@ -233,13 +233,13 @@
       "parameters": {
         "jsCode": "const queryResults = $input.all();\nconst validatedItems = $('Validate & Normalise Rows').all();\nconst results = [];\n\nfor (let i = 0; i < queryResults.length; i++) {\n  const isDuplicate = queryResults[i].json.is_duplicate === true || \n                      queryResults[i].json.is_duplicate === 'true';\n  \n  const originalData = validatedItems[i]?.json || {};\n  \n  results.push({\n    json: {\n      ...originalData,\n      _is_duplicate: isDuplicate\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "3aefeb22-0d1f-41b7-bf28-1ef8ccd67f0e",
+      "id": "6c4d087a-0720-4efa-8639-910893d2fce9",
       "name": "Evaluate Dedup Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        528,
-        176
+        1072,
+        336
       ],
       "notes": "Interprets the Postgres query result. If a row was returned, flags the invoice as a duplicate. Non-duplicates proceed to INSERT."
     },
@@ -249,13 +249,13 @@
         "query": "INSERT INTO {{ $json._dry_run ? 'supplier_invoices_staging' : 'supplier_invoices' }} (\n  invoice_number, supplier_number, supplier_name, department,\n  amount_excl_vat, vat, amount_incl_vat, invoice_date,\n  source_file_name, source_hash, status, validation_notes,\n  execution_id, row_number\n) VALUES (\n  '{{ $json.invoice_number }}',\n  '{{ $json.supplier_number }}',\n  '{{ $json.supplier_name }}',\n  '{{ $json.department }}',\n  {{ $json.amount_excl_vat }},\n  {{ $json.vat }},\n  {{ $json.amount_incl_vat }},\n  '{{ $json.invoice_date }}',\n  '{{ $json.source_file_name }}',\n  '{{ $json.source_hash }}',\n  'inserted',\n  '{{ $json.validation_notes }}',\n  '{{ $json.execution_id }}',\n  {{ $json.row_number }}\n)\nON CONFLICT (supplier_number, invoice_number) DO NOTHING\nRETURNING *;",
         "options": {}
       },
-      "id": "b5a910dc-f9ea-416c-b4c9-5d4142d7f875",
+      "id": "174b3c73-7f5d-474e-a5b2-aa754b5ba67e",
       "name": "Insert to DB (supplier_invoices)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        976,
-        64
+        1520,
+        224
       ],
       "alwaysOutputData": false,
       "executeOnce": false,
@@ -272,13 +272,13 @@
       "parameters": {
         "jsCode": "return $input.all().map(item => ({\n  json: {\n    ...item.json,\n    status: 'duplicate',\n    validation_notes: 'Duplicate: (supplier_number, invoice_number) already exists in supplier_invoices'\n  }\n}));"
       },
-      "id": "3de12803-9344-4547-8bc9-d9ce86c6e0e5",
+      "id": "0ff4fc85-2cf5-49b5-a9ec-d1a0822499ec",
       "name": "Mark as Duplicate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        976,
-        256
+        1520,
+        416
       ],
       "notes": "Tags duplicate rows with status='duplicate' and a clear reason. Feeds into the metrics aggregator."
     },
@@ -286,13 +286,13 @@
       "parameters": {
         "jsCode": "return $input.all().map(item => ({\n  json: {\n    ...item.json,\n    status: 'failed',\n    validation_notes: item.json.validation_notes\n  }\n}));"
       },
-      "id": "0f49287b-2333-4866-84e5-ec9935a38774",
+      "id": "29e228d2-a320-4a70-897b-a1db7a91218f",
       "name": "Mark as Failed",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        976,
-        496
+        1520,
+        656
       ],
       "notes": "Tags invalid rows with status='failed'. validation_notes already populated by the Validate node."
     },
@@ -420,13 +420,13 @@
         },
         "options": {}
       },
-      "id": "dd096ed9-d14b-4916-bc7c-d098e54236c5",
+      "id": "498a9050-bdcb-428f-b6f3-4f35fa3ec2c9",
       "name": "Write to Failures Table (Bonus)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1200,
-        544
+        1744,
+        704
       ],
       "credentials": {
         "postgres": {
@@ -440,32 +440,32 @@
       "parameters": {
         "jsCode": "const allItems = $input.all();\nconst executionId = $execution.id || 'unknown';\n\nlet inserted = 0;\nlet duplicates = 0;\nlet failed = 0;\nconst errors = [];\n\nfor (const item of allItems) {\n  const s = item.json.status;\n  if (s === 'inserted') {\n    inserted++;\n  } else if (s === 'duplicate') {\n    duplicates++;\n  } else if (s === 'failed') {\n    failed++;\n    errors.push({\n      row_number: item.json.row_number || 'N/A',\n      invoice_number: item.json.invoice_number || 'N/A',\n      supplier_number: item.json.supplier_number || 'N/A',\n      supplier_name: item.json.supplier_name || 'N/A',\n      reason: item.json.validation_notes || 'Unknown error'\n    });\n  }\n}\n\nconst processed = inserted + duplicates + failed;\n\nlet errorRowsHtml = '';\nconst errorSlice = errors.slice(0, 20);\nfor (const e of errorSlice) {\n  errorRowsHtml += '<tr>';\n  errorRowsHtml += '<td style=\"padding:4px 8px;border:1px solid #ddd;\">' + e.row_number + '</td>';\n  errorRowsHtml += '<td style=\"padding:4px 8px;border:1px solid #ddd;\">' + e.invoice_number + '</td>';\n  errorRowsHtml += '<td style=\"padding:4px 8px;border:1px solid #ddd;\">' + e.supplier_number + '</td>';\n  errorRowsHtml += '<td style=\"padding:4px 8px;border:1px solid #ddd;\">' + e.supplier_name + '</td>';\n  errorRowsHtml += '<td style=\"padding:4px 8px;border:1px solid #ddd;color:#c00;\">' + e.reason + '</td>';\n  errorRowsHtml += '</tr>';\n}\n\nlet errorSection = '';\nif (errors.length > 0) {\n  errorSection = '<h3 style=\"color:#c00;\">Failed Rows (' + errors.length + ')</h3>';\n  errorSection += '<table style=\"border-collapse:collapse;font-size:13px;width:100%;\">';\n  errorSection += '<thead><tr style=\"background:#f5f5f5;\">';\n  errorSection += '<th style=\"padding:6px 8px;border:1px solid #ddd;text-align:left;\">Row #</th>';\n  errorSection += '<th style=\"padding:6px 8px;border:1px solid #ddd;text-align:left;\">Invoice #</th>';\n  errorSection += '<th style=\"padding:6px 8px;border:1px solid #ddd;text-align:left;\">Supplier #</th>';\n  errorSection += '<th style=\"padding:6px 8px;border:1px solid #ddd;text-align:left;\">Supplier Name</th>';\n  errorSection += '<th style=\"padding:6px 8px;border:1px solid #ddd;text-align:left;\">Reason</th>';\n  errorSection += '</tr></thead>';\n  errorSection += '<tbody>' + errorRowsHtml + '</tbody></table>';\n} else {\n  errorSection = '<p style=\"color:green;\">No failed rows.</p>';\n}\n\nconst failedColor = failed > 0 ? '#c00' : 'green';\n\nconst emailBody = '<html><body style=\"font-family:Arial,sans-serif;color:#333;\">'\n  + '<h2>Supplier Invoice Ingest Summary</h2>'\n  + '<table style=\"border-collapse:collapse;margin-bottom:16px;\">'\n  + '<tr><td style=\"padding:4px 12px 4px 0;\"><strong>Processed</strong></td><td style=\"padding:4px;\">' + processed + '</td></tr>'\n  + '<tr><td style=\"padding:4px 12px 4px 0;\"><strong>Inserted</strong></td><td style=\"padding:4px;color:green;\">' + inserted + '</td></tr>'\n  + '<tr><td style=\"padding:4px 12px 4px 0;\"><strong>Duplicates</strong></td><td style=\"padding:4px;color:orange;\">' + duplicates + '</td></tr>'\n  + '<tr><td style=\"padding:4px 12px 4px 0;\"><strong>Failed</strong></td><td style=\"padding:4px;color:' + failedColor + ';\">' + failed + '</td></tr>'\n  + '</table>'\n  + errorSection\n  + '<hr/>'\n  + '<p style=\"font-size:11px;color:#999;\">Execution ID: ' + executionId + ' &nbsp;|&nbsp; Generated by n8n &nbsp;|&nbsp; Africa/Johannesburg</p>'\n  + '</body></html>';\n\nconst subject = 'Supplier Ingest: ' + inserted + ' ok, ' + duplicates + ' dup, ' + failed + ' failed';\n\nreturn [{\n  json: {\n    processed: processed,\n    inserted: inserted,\n    duplicates: duplicates,\n    failed: failed,\n    errors: errors,\n    execution_id: executionId,\n    email_subject: subject,\n    email_body_html: emailBody\n  }\n}];"
       },
-      "id": "302be86a-3f71-451a-963a-a2e4de1d8958",
+      "id": "395e72d4-7e14-423d-b73e-e43be2c2e3c1",
       "name": "Aggregate Metrics & Build Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1424,
-        224
+        1968,
+        384
       ],
       "notes": "Collects all branch outputs, counts processed/inserted/duplicates/failed, builds HTML email. Error table shows Row # for easy debugging. Execution ID in footer for traceability. Capped at 20 error rows."
     },
     {
       "parameters": {
-        "sendTo": "invoices-team@yourcompany.com",
+        "sendTo": "seiphemokatlego@gmail.com",
         "subject": "={{ $json.email_subject }}",
         "message": "={{ $json.email_body_html }}",
         "options": {
-          "replyTo": "noreply@yourcompany.com"
+          "replyTo": "seiphemokatlego@gmail.com"
         }
       },
-      "id": "4140c92d-e6ff-4867-9e8f-2808f1d0817a",
+      "id": "dd88404b-bf65-4607-812a-f01ad298042d",
       "name": "Send Email Alert",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
       "position": [
-        1648,
-        112
+        2192,
+        272
       ],
       "webhookId": "4b201152-572a-4116-a5ec-0640b8c96b38",
       "credentials": {
@@ -489,10 +489,10 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        -1920,
-        16
+        -1392,
+        176
       ],
-      "id": "91e0bba4-68e2-403a-95f0-b3b821a2cc3f",
+      "id": "092278dd-ffa0-4e4e-96f2-a035dcf4b7a1",
       "name": "Get a message",
       "webhookId": "d151959e-2ae6-4514-918a-59f89232093b",
       "credentials": {
@@ -529,13 +529,13 @@
           "looseTypeValidation": true
         }
       },
-      "id": "ef3ae3ba-724f-43cc-a688-3f53ceea2b53",
+      "id": "f4d71e45-8891-4bc6-8887-67da10f0753a",
       "name": "Is Duplicate?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        752,
-        176
+        1296,
+        336
       ],
       "notes": "TRUE = duplicate → skip insert, mark status='duplicate'. FALSE = new record → INSERT."
     },
@@ -552,10 +552,10 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -1920,
-        208
+        -1392,
+        368
       ],
-      "id": "3282403d-0518-4c63-9a1b-6fa579281528",
+      "id": "70a7c681-d933-4606-8d21-875078df3d07",
       "name": "Download file",
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -572,10 +572,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        1200,
-        208
+        1744,
+        368
       ],
-      "id": "8313c586-6ab2-44d0-96e2-88a9890dd380",
+      "id": "90a4353d-bf80-456f-9448-34bbe45a63b6",
       "name": "Merge1"
     },
     {
@@ -605,13 +605,13 @@
           "looseTypeValidation": true
         }
       },
-      "id": "3fc85d68-6b23-4502-843a-a9a9550f7593",
+      "id": "7796d1ae-1400-4c05-beba-d7ad2b7d1843",
       "name": "File Already Processed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -1024,
-        208
+        -272,
+        368
       ],
       "notes": "TRUE = file hash found in DB → send skip email, stop processing. FALSE = new file → continue to CSV parsing. Prevents wasted compute on duplicate uploads."
     },
@@ -619,28 +619,74 @@
       "parameters": {
         "jsCode": "// File already processed — build skip notification email\nconst hashNode = $('Compute SHA-256 Hash').first().json;\nconst fileName = hashNode.source_file_name || 'unknown file';\nconst hash = hashNode.source_hash || 'unknown';\nconst executionId = $execution.id || 'unknown';\n\nreturn [{\n  json: {\n    email_subject: 'Supplier Ingest: File already processed — skipped',\n    email_body_html: '<html><body style=\"font-family:Arial,sans-serif;color:#333;\">'\n      + '<h2>Supplier Invoice Ingest — File Skipped</h2>'\n      + '<p>The following file has already been processed and was skipped:</p>'\n      + '<table style=\"border-collapse:collapse;margin-bottom:16px;\">'\n      + '<tr><td style=\"padding:4px 12px 4px 0;\"><strong>File Name</strong></td><td>' + fileName + '</td></tr>'\n      + '<tr><td style=\"padding:4px 12px 4px 0;\"><strong>SHA-256 Hash</strong></td><td style=\"font-family:monospace;font-size:11px;\">' + hash + '</td></tr>'\n      + '<tr><td style=\"padding:4px 12px 4px 0;\"><strong>Execution ID</strong></td><td>' + executionId + '</td></tr>'\n      + '</table>'\n      + '<p>No rows were inserted. If this is a new file, verify that the file contents are different from the previously processed version.</p>'\n      + '<hr/><p style=\"font-size:11px;color:#999;\">Generated by n8n · Supplier Invoice Ingest · Africa/Johannesburg</p>'\n      + '</body></html>'\n  }\n}];"
       },
-      "id": "26ad2db7-4547-44bf-b006-449157dcd6e8",
+      "id": "e64712fb-125e-4139-bcfd-a056dc38903a",
       "name": "Build Skip Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1216,
-        -112
+        1968,
+        48
       ],
       "notes": "Builds the skip notification email when a file has already been processed. Includes file name, hash, and execution ID for auditing."
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nreturn [{\n  json: {\n    ...item.json\n  },\n  binary: item.binary\n}];\n```\n\n5. Connect it: **Compute SHA-256 Hash → Check File Hash in DB → File Already Processed?**\n\nThis passes the binary through while keeping the hash. Then the **File Already Processed?** IF node needs its condition updated — change it to check:\n```\n{{ $json.source_hash }}"
+        "jsCode": "const hashItem = $('Compute SHA-256 Hash').first();\nconst dbItem = $input.first();\n\nreturn [{\n  json: {\n    ...hashItem.json,\n    file_exists: dbItem.json.file_exists\n  },\n  binary: hashItem.binary\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1264,
-        208
+        -496,
+        368
       ],
-      "id": "0ac713f2-0811-4281-991d-3a0f4746a0ce",
+      "id": "39912c41-5f60-420d-9ea0-65ccfdcb5507",
       "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT EXISTS (\n  SELECT 1\n  FROM processed_files\n  WHERE source_hash = $1\n) AS file_exists;",
+        "options": {
+          "queryReplacement": "={{$json.source_hash}}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -720,
+        368
+      ],
+      "id": "a548bd95-1acf-4fc4-bff6-47fbe4addd17",
+      "name": "Check File Hash in DB",
+      "credentials": {
+        "postgres": {
+          "id": "1nEWnrLf11sYJHZf",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO processed_files (source_hash, source_file_name)\nVALUES ($1, $2)\nON CONFLICT (source_hash) DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ $json.source_hash }}\n{{ $json.source_file_name }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1728,
+        224
+      ],
+      "id": "d2a1630d-cbe5-4af3-94c5-edc1ae45b8b8",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "1nEWnrLf11sYJHZf",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -693,7 +739,7 @@
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Check File Hash in DB",
             "type": "main",
             "index": 0
           }
@@ -777,9 +823,9 @@
       "main": [
         [
           {
-            "node": "Merge1",
+            "node": "Execute a SQL query",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -912,6 +958,28 @@
           }
         ]
       ]
+    },
+    "Check File Hash in DB": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -920,7 +988,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "ab8af750-abf2-4c08-8ae1-3f28262c03ea",
+  "versionId": "ced5fafd-d4ef-4133-9e16-5ee618d08bc7",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "87440cb96e53624c5285b511dd89e41e5fa205e637011f8f9133d1ace10fa128"
